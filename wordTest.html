@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>단어장</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+      font-size: 0.95em;
+    }
+
+    input, button {
+      font-size: 0.95em;
+      width: 100%;
+      margin-top: 8px;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    #startBtn {
+      background-color: #fddde6; /* 연한 핑크 */
+      border: 1px solid #fcbecf;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .result {
+      margin-top: 12px;
+      font-weight: bold;
+    }
+
+  </style>
+  
+</head>
+<body>
+
+  <body>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+      <h1 style="margin: 0; font-size: 1.5em;">단어 시험 웹앱</h1>
+      <button id="addBtn" onclick="toggleWordForm()" style="
+        font-size: 0.75em;
+        width: 80px;
+        padding: 4px 6px;
+        height: 30px;
+      ">➕ 단어 추가</button>
+      
+    </div>
+    
+
+    <!-- 메인 화면 (시험 시작 / 단어 추가 버튼) -->
+    <div id="wordManager">
+      <button id="startBtn" onclick="startQuiz()" style="height:65px">📖 시험 시작</button>
+      
+      <p>현재 등록된 단어 수: <span id="wordCount">0</span></p>
+    </div>
+    
+    <!-- 단어 추가 입력창 (처음엔 숨김) -->
+    <div id="wordForm" class="hidden">
+      <input type="text" id="newKorean" placeholder="뜻 (예: 사과)" />
+      <input type="text" id="newEnglish" placeholder="영어 (예: apple)" />
+      <button onclick="addWord()">추가</button>
+    </div>
+  
+    <!-- 퀴즈 영역 -->
+    <div id="quiz-section" class="hidden">
+      <p id="question"></p>
+      <input type="text" id="answer" placeholder="정답 입력" />
+      <button onclick="checkAnswer()">제출</button>
+      <div id="result" class="result"></div>
+    </div>
+  
+    <!-- 결과 영역 -->
+    <div id="result-section" class="hidden">
+      <h2>시험 결과</h2>
+      <p id="score"></p>
+      <p id="wrongCount"></p>
+      <h3>오답 노트</h3>
+      <ul id="wrongList"></ul>
+      <button onclick="restart()">처음으로</button>
+    </div>
+  
+  <script>
+    // 기본 단어 리스트 (사용자가 삭제 불가능)
+    let defaultWords = [
+      { korean: "알리다,통지하다"  , english: "inform" },
+      { korean: "충고하다", english: "advise" },
+      { korean: "봉사,서비스"   , english: "service" },
+      { korean: "공급하다,준비하다"   , english: "provide" },
+      { korean: "관계"  , english: "relationship" },
+      { korean: "행동하다"  , english: "behave" },
+      { korean: "향상시키다,향상하다"   , english: "improve" },
+      { korean: "개인의,개인,개인적인"  , english: "individual" },
+      { korean: "필요로하다,요구하다"  , english: "require" },
+      { korean: "개발하다,발달하다"  , english: "develop" },
+      { korean: "사회의"  , english: "social" },
+      { korean: "총계", english: "amount" },
+      { korean: "고용하다"   , english: "employee" },
+      { korean: "끔찍핟,무서운"   , english: "terrible" },
+      { korean: "태도,입장"  , english: "attitude" },
+      { korean: "연구,연구하다"  , english: "research" },
+      { korean: "청중,관객"   , english: "audience" },
+      { korean: "자원봉사,자발적으로하다"  , english: "volunteer" },
+      { korean: "영향,영향을끼치다"  , english: "influence" },
+      { korean: "국제의,국제적인"  , english: "international" },
+
+      { korean: "기회"  , english: "oppertunity" },
+      { korean: "능력", english: "ability" },
+      { korean: "비용,지출"   , english: "expense" },
+      { korean: "포함하다,말려들게하다"   , english: "involve" },
+      { korean: "강조,스트레스"  , english: "stress" },
+      { korean: "그러므로,따서,그결과"  , english: "therefore" },
+      { korean: "평균,평균의"   , english: "average" },
+      { korean: "타다,태움"  , english: "ride" },
+      { korean: "지방의,지역의"  , english: "local" },
+      { korean: "촉구하다,격려하다"  , english: "encourage" },
+      { korean: "결심하다,결정하다"  , english: "determine" },
+      { korean: "편안,위로", english: "comfort" },
+      { korean: "소비하다"   , english: "consume" },
+      { korean: "물체,목표,반대하다"   , english: "object" },
+      { korean: "~에게 깊은 인상을 주다"  , english: "impress" },
+      { korean: "이용가능한,쓸모있는"  , english: "avaliable" },
+      { korean: "함유하다,포함하다"   , english: "contain" },
+      { korean: "인지하다,인정하다"  , english: "recognize" },
+      { korean: "재료,물질,물질의"  , english: "material" },
+      { korean: "긍정적인,확신의"  , english: "positive" }
+    ];
+
+    // 사용자 추가 단어 리스트
+    let userWords = [];
+
+    // 퀴즈용
+    let quizList = [];
+    let currentIndex = 0;
+    let score = 0;
+    let wrongAnswers = [];
+
+    document.getElementById("answer").addEventListener("keyup", function(e) {
+      if (e.key === "Enter") checkAnswer();
+    });
+
+    function updateWordCount() {
+      document.getElementById("wordCount").textContent = defaultWords.length + userWords.length;
+    }
+
+    function addWord() {
+      const korean = document.getElementById("newKorean").value.trim();
+      const english = document.getElementById("newEnglish").value.trim().toLowerCase();
+
+      if (!korean || !english) {
+        alert("뜻과 영어 단어를 모두 입력해주세요.");
+        return;
+      }
+
+      userWords.push({ korean, english });
+      document.getElementById("newKorean").value = "";
+      document.getElementById("newEnglish").value = "";
+      updateWordCount();
+    }
+
+    function startQuiz() {
+      const combinedList = [...defaultWords, ...userWords];
+      if (combinedList.length < 1) {
+        alert("단어를 먼저 추가해주세요!");
+        return;
+      }
+
+      // 퀴즈 세팅
+      const shuffled = combinedList.sort(() => 0.5 - Math.random());
+      quizList = shuffled.slice(0, 20);
+      currentIndex = 0;
+      score = 0;
+      wrongAnswers = [];
+
+      // UI 전환
+      document.getElementById("wordManager").classList.add("hidden");
+      document.getElementById("addBtn").classList.add("hidden");
+      document.getElementById("quiz-section").classList.remove("hidden");
+
+      loadQuestion();
+    }
+
+
+    function loadQuestion() {
+      if (currentIndex < quizList.length) {
+        const q = quizList[currentIndex];
+        document.getElementById("question").textContent = 
+          `Q${currentIndex + 1}. "${q.korean}"`;
+        document.getElementById("answer").value = "";
+        document.getElementById("answer").focus();
+        document.getElementById("result").textContent = "";
+
+        // 🔑 엔터 키로 제출 가능
+        document.getElementById("answer").addEventListener("keyup", function handler(e) {
+          if (e.key === "Enter") {
+            checkAnswer();
+            // 이벤트 중복 방지: 한 번 등록되면 삭제
+            document.getElementById("answer").removeEventListener("keyup", handler);
+          }
+        });
+      } else {
+        showResult();
+      }
+    }
+
+
+    function checkAnswer() {
+      const userAnswer = document.getElementById("answer").value.trim().toLowerCase();
+      const correctAnswer = quizList[currentIndex].english;
+
+      if (userAnswer === correctAnswer) {
+        document.getElementById("result").textContent = "✅ 정답입니다!";
+        score++;
+      } else {
+        document.getElementById("result").textContent = `❌ 틀렸습니다. 정답은 "${correctAnswer}"입니다.`;
+        wrongAnswers.push({
+          korean: quizList[currentIndex].korean,
+          correct: correctAnswer,
+          yourAnswer: userAnswer || "(무응답)"
+        });
+      }
+
+      currentIndex++;
+      setTimeout(loadQuestion, 1500);
+    }
+
+    function showResult() {
+      document.getElementById("quiz-section").classList.add("hidden");
+      document.getElementById("result-section").classList.remove("hidden");
+
+      document.getElementById("score").textContent = `정답 개수: ${score} / ${quizList.length}`;
+      document.getElementById("wrongCount").textContent = `틀린 개수: ${wrongAnswers.length}`;
+
+      const ul = document.getElementById("wrongList");
+      ul.innerHTML = "";
+      wrongAnswers.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = `"${item.korean}" → 당신의 답: "${item.yourAnswer}" / 정답: "${item.correct}"`;
+        ul.appendChild(li);
+      });
+    }
+
+    function restart() {
+      document.getElementById("result-section").classList.add("hidden");
+      document.getElementById("wordManager").classList.remove("hidden");
+      document.getElementById("addBtn").classList.remove("hidden");
+    }
+
+    function toggleWordForm() {
+      const form = document.getElementById("wordForm");
+      form.classList.toggle("hidden");
+    }
+
+
+    // 초기 단어 수 업데이트
+    updateWordCount();
+  </script>
+
+</body>
+</html>
